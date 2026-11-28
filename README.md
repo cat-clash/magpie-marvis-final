@@ -1,5 +1,3 @@
-# 腾讯 Marvis · magpie / OpenCode 供应商插件
-
 > `0.9.0` · PC-only · provider id 固定为 **`marvis`**（已有账号、路由组、模型配置全部无缝沿用）
 >
 > 本文档是**唯一权威使用文档**。原先分散的 `README-FINAL.md`、`CLEARING_CACHE.md`、
