@@ -2,9 +2,7 @@
 
 > `0.9.0` · PC-only · provider id 固定为 **`marvis`**（已有账号、路由组、模型配置全部无缝沿用）
 >
-> 本文档是**唯一权威使用文档**。原先分散的 `README-FINAL.md`、`CLEARING_CACHE.md`、
-> `UPGRADE-0.7.md`、`UPGRADE-083-OPT.md` 已合并进本文件并删除；版本变更历史见
-> [`CHANGELOG.md`](./CHANGELOG.md)。
+> 本文档是**唯一权威使用文档**，只描述当前版本的行为；版本变更历史见 [`CHANGELOG.md`](./CHANGELOG.md)。
 
 上游只有一个：`https://yybadaccess.3g.qq.com`
 
@@ -98,7 +96,7 @@ MARVIS_TRANSPORT = gateway   ← 本地 OpenAI 兼容网关 http://127.0.0.1:808
 
 ## 4. 内置本地网关 `gateway/`
 
-`0.9.6` 起，原先独立的 `Marvis-proxy-public` 仓库源码并入本仓库 `gateway/`（原仓库归档，避免两处漂移）。
+`gateway/` 内置了原先独立仓库 `Marvis-proxy-public` 的源码（原仓库已归档，避免两处漂移）。
 纯 Python 标准库实现的 OpenAI / Anthropic 兼容网关，默认 `http://127.0.0.1:8088/v1`：
 
 ```bash
@@ -186,20 +184,20 @@ node scripts/cli.mjs breaker reset --all
 
 ---
 
-## 7. 思考与正文分离（`0.9.9` – `0.9.13`）
+## 7. 思考与正文分离
 
 PC 客户端会把推理过程、重试、最终回答**拼进同一个文本流**，历史上表现为「回复满屏英文 / 像乱码」。
 现在的处理链路：
 
-1. **`0.9.10` / `0.9.11`**：AG-UI 事件按 `evName` 分流，`REASONING_*` 的 delta 只进 frame 的 `reasoning`
+1. **事件分流**：AG-UI 事件按 `evName` 分流，`REASONING_*` 的 delta 只进 frame 的 `reasoning`
    字段 → `reasoning_content`（客户端收进可折叠的思考区），**不会混进正文**。
-2. **`0.9.9`**：WS relay 补上 `reasoning_effort` 归一化，思考不再漏进内容。
-3. **`0.9.13`**：还有第二条通路（思考与正文无结构边界），新增 `src/marvis/thinking-split.mjs`
+2. **档位归一**：WS relay 补上 `reasoning_effort` 归一化，思考不再漏进内容。
+3. **按行切分**：还有第二条通路（思考与正文无结构边界），新增 `src/marvis/thinking-split.mjs`
    按**行**保守切分 —— 英文思考句式开头 + 中文占比 < 5% + 英文词数 ≥ 12 三条同时满足才判为思考；
    任何含中文正文的行一律留在 `content`；切完正文为空则整段还给 `content`（绝不返回空回答）。
-4. **`0.9.12`**：DSH 后台**标题生成**请求（route 跟随当前会话）改由本地直接返回短标题，
+4. **标题本地返回**：DSH 后台**标题生成**请求（route 跟随当前会话）改由本地直接返回短标题，
    不再发上游 —— 注入框架被标题 LLM 复读出来的英文垃圾彻底消失。
-5. **`0.9.7`**：额度显示改走本地网关 `token.conversations_usage`（与客户端 App 同源），
+5. **额度与预算**：额度显示改走本地网关 `token.conversations_usage`（与客户端 App 同源），
    网关不可达时静默回落 HTTP 钱包；`MARVIS_USAGE_WS=0` 可关。
    `reasoning_effort` 档位过大时自动把预算抬到 `MARVIS_MAX_TOKENS_FLOOR`（默认 64000）。
 
@@ -281,9 +279,9 @@ node scripts/probe-vision.mjs      # 收图能力实测
 | `403 非法请求 / 4100406` | system 首行身份词命中内容过滤 | 开 `first_line_fallback`，或改「提示词首行替换」 |
 | `400 4130001` / `400 无效模型id` | 把真实模型名当 `model` 传了 | 传**槽位名**（第 1 节） |
 | `429 限流` 但配的是 relay | 父进程继承了 `MARVIS_WS_MODE=off`，环境变量优先级高于文件 | `node scripts/probe-openclaw.mjs` 看 `envMode`；在 magpie 启动脚本里 `[Environment]::SetEnvironmentVariable('MARVIS_WS_MODE', $null, 'Process')` |
-| 配了 relay 却走成 auto | `openclaw.json` 带 BOM，`JSON.parse` 拒绝 → 配置被静默跳过 | `0.9.4` 起读取前 `replace(/^\uFEFF/,"")`；用无 BOM 的 UTF-8 写配置 |
-| 回复里混英文思考 / 像乱码 | PC 客户端把 reasoning 拼进正文流 | 见第 7 节；确认插件 ≥ `0.9.13` |
-| 额度卡片显示 0 | 上游营销额度未扣减 | `0.9.7` 起 used=0 时显示「共 10,000,000 tokens（上游未扣减）」 |
+| 配了 relay 却走成 auto | `openclaw.json` 带 BOM，`JSON.parse` 拒绝 → 配置被静默跳过 | 读取前 `replace(/^\uFEFF/,"")`；用无 BOM 的 UTF-8 写配置 |
+| 回复里混英文思考 / 像乱码 | PC 客户端把 reasoning 拼进正文流 | 见第 7 节；确认插件为当前版本 |
+| 额度卡片显示 0 | 上游营销额度未扣减 | used=0 时显示「共 10,000,000 tokens（上游未扣减）」 |
 
 ---
 
@@ -304,56 +302,7 @@ python clear_cache.py     # 仓库根的脚本，一次清掉上面三处
 
 ---
 
-## 13. 手机端（`0.9.8` 起的变化）
-
-`0.9.8` 做了瘦身，**删除**了手机端的三样东西：
-
-- 手机端 QQ / 微信登录（`mobile-login.mjs`、本机粘贴页、`phone-setup.sh`、`build-phone-kit.mjs`）
-- `remote` wss 手机会话域传输（抓 handshake.log 那条路，凭据 15–20 分钟就失效）
-- Android FFI / 手机出票相关代码
-
-> ⚠ **如果你现在手机上还能点 QQ / 微信登录，说明装的是 `0.8.9` 旧版**——仓库里 `0.9.x`
-> 已不含这些代码（`src/marvis/mobile-login.mjs`、`phone-setup.sh`、`build-phone-kit.mjs`
-> 都已不存在）。确认方法：
->
-> ```bash
-> node -e "console.log(require('./node_modules/magpie-marvis-final/package.json').version)"  # 或
-> grep '"version"' ~/.config/magpie/plugins/node_modules/magpie-marvis-final/package.json
-> ```
->
-> 0.9.x 里手机端只保留「插件 + 本地网关」这一种组合。
-
-**现在手机怎么用**：走 `gateway` 通道 —— 在 Termux / PRoot 里跑本仓库的 `gateway/serve.py`，
-账号池与出票都在网关侧维护，插件本体不依赖任何 Windows 原生组件：
-
-```sh
-pkg install python curl -y
-cd gateway && python serve.py        # 监听 127.0.0.1:8088
-# 控制台 http://127.0.0.1:8088/ 里加号登录 Marvis
-mkdir -p ~/.magpie-marvis-native && cat > ~/.magpie-marvis-native/gateway.json <<'EOF'
-{ "mode": "gateway", "url": "http://127.0.0.1:8088/v1", "key": "", "timeoutMs": 600000 }
-EOF
-```
-
-然后在手机 magpie 壳里导入本插件目录，供应商 `marvis` 加「本地网关」账号即可。
-
----
-
-## 14. 历史沿革
-
-`0.2.x` 现签修复 → `0.3.x` openclaw WS 传输 → `0.4.x` 抓包重连 / 熔断器 / 中文首行护栏 →
-`0.5.x` 精简、HTTP 直连恢复 → `0.6.x` 正名为纯 magpie 插件 + 本地网关 → `0.7.x` 流式透传 /
-指数退避 / 节奏闸 / 主动续期 → `0.8.x` 网关模式 + 按账号隔离 → `0.9.x` 面板收敛、并入网关源码、
-PC-only 瘦身、思考与正文彻底分离。
-
-原版 `MYCF711/magpie-marvis`（HTTP-only）2026-11-18 起停更；本仓库合并了
-`MYCF711/magpie-marvis`、`cat-clash/magpie-marvis-ws`、`yy158358/Marvis-proxy-public` 三条线的可用成果。
-网关协议与手机出票方案的思路来自 `yy158358/Marvis-proxy-public`（MIT），本插件的网关转发实现已改写为
-通用 OpenAI 兼容转发。（原 `NOTICE.md` 已从仓库移除，归属信息在此保留。）
-
----
-
-## 15. 文档索引
+## 13. 文档索引
 
 | 文件 | 内容 |
 |---|---|
