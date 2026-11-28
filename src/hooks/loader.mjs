@@ -1121,7 +1121,7 @@ export function loaderHook(input, options = {}) {
               "risk_blocked",
               "上游风控拦截（Marvis PC 客户端 WS 通道）：agent.run 被 risk_control_blocked 拦下，"
                 + "与 HTTP 直连的 4100404 同源，换账号 / 换 IP 都无效。"
-                + "可行出路只有一条：本地 Python 网关（8088）。自检：node scripts/cli.mjs doctor。"
+                + "可行出路只有一条：本地 Python 网关（8088）。自检：node scripts/doctor.mjs。"
                 + `原始返回：${String(err?.message ?? err).slice(0, 400)}`,
               retryAfterSec,
             )

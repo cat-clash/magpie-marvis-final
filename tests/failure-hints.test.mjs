@@ -21,7 +21,7 @@ test("openclaw/10123 失败：诊断指向 PC 客户端 + WS_MODE=off 出路", (
   assert.match(h.hint, /10123/)
   assert.match(h.hint, /PC 客户端/)
   assert.match(h.hint, /MARVIS_WS_MODE=off/)
-  assert.equal(h.command, "node scripts/cli.mjs doctor")
+  assert.equal(h.command, "node scripts/doctor.mjs")
 })
 
 test("普通 ECONNREFUSED：通用上游诊断", () => {

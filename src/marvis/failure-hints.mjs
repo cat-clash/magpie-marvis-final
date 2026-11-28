@@ -29,15 +29,15 @@ export function connectionFailureHint({ errText }) {
       hint:
         "10123 是 Marvis PC 客户端的 AG-UI relay 端口：确认 PC 客户端已启动并登录（10123 在监听）。" +
         "若不想走 WS 通道，设 MARVIS_WS_MODE=off 或 MARVIS_TRANSPORT=direct 走 HTTP 直连。" +
-        "自检：node scripts/cli.mjs doctor。",
-      command: "node scripts/cli.mjs doctor",
+        "自检：node scripts/doctor.mjs。",
+      command: "node scripts/doctor.mjs",
     }
   }
   return {
     header: "upstream-unreachable",
     hint:
-      "连不上上游：检查网络与代理（HTTP(S)_PROXY），或用 node scripts/cli.mjs doctor 自检通道配置。",
-    command: "node scripts/cli.mjs doctor",
+      "连不上上游：检查网络与代理（HTTP(S)_PROXY），或用 node scripts/doctor.mjs 自检通道配置。",
+    command: "node scripts/doctor.mjs",
   }
 }
 
@@ -125,20 +125,20 @@ export function enhanceRiskMessage(original, { probeReachable, autoTried, autoEr
       base +
       ` 已自动尝试切到本机 Marvis PC 客户端 WS 通道（MARVIS_WS_MODE=relay）重试，但失败：${autoError}。` +
       " 请确认 PC 客户端已登录并保持打开。" +
-      " 自检：node scripts/cli.mjs doctor。"
+      " 自检：node scripts/doctor.mjs。"
     )
   }
   if (probeReachable) {
     return (
       base +
       " 检测到本机 127.0.0.1:10123（Marvis PC 客户端）可达：设 MARVIS_WS_MODE=relay 即可绕开 HTTP 风控；" +
-      "或保持现状等冷却结束。自检：node scripts/cli.mjs doctor。"
+      "或保持现状等冷却结束。自检：node scripts/doctor.mjs。"
     )
   }
   return (
     base +
     " 本机 127.0.0.1:10123 不可达（Marvis PC 客户端没开）：启动并登录 PC 客户端后可设 " +
     "MARVIS_WS_MODE=relay 绕开 HTTP 风控。" +
-    " 自检：node scripts/cli.mjs doctor（会显示当前 WS 模式与凭据状态）。"
+    " 自检：node scripts/doctor.mjs（会显示当前 WS 模式与凭据状态）。"
   )
 }
