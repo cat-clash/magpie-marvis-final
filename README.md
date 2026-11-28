@@ -279,7 +279,7 @@ node scripts/probe-vision.mjs      # 收图能力实测
 | 症状 | 根因 | 处理 |
 |---|---|---|
 | `403 4100404`（卡片显示 503） | 账号/设备被风控 | 看第 6 节判读；单账号冷却可换号，多账号接连出现要换 IP / 重签 uskey |
-| `401 4100403` | 登录态过期 | 检查 `MARVIS_REFRESH_LEAD_MS`；微信 token 只有 2h |
+| `401 4100403` | 登录态过期 | 检查续期提前量（见第五节）；微信 token 只有 2h |
 | 403 非法请求 / 4100406 | system 首行身份词命中内容过滤 | 开 `first_line_fallback`，或改「提示词首行替换」 |
 | `400 4130001` / 400 无效模型 id | 把真实模型名当 `model` 传了 | 传**槽位名**（第 1 节） |
 | 429 限流 但配的是 relay | 父进程继承了 `MARVIS_WS_MODE=off`，环境变量优先级高于文件 | `node scripts/probe-openclaw.mjs` 看 `envMode`；在 magpie 启动脚本里 `[Environment]::SetEnvironmentVariable('MARVIS_WS_MODE', $null, 'Process')` |
