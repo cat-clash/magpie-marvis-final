@@ -1185,7 +1185,7 @@ export function loaderHook(input, options = {}) {
           }
           if (!errBody.error.code) errBody.error.code = "gateway_unavailable"
           errBody.error.diagnosis_hint = gwHint
-          errBody.error.diagnose_command = "node <插件目录>/scripts/cli.mjs doctor"
+          errBody.error.diagnose_command = "node <插件目录>/scripts/doctor.mjs"
           return new Response(JSON.stringify(errBody), {
             status: response.status,
             headers: { "content-type": "application/json", "x-marvis-diagnosis": "gateway-503" },
