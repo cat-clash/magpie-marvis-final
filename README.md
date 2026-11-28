@@ -14,7 +14,7 @@
 ## 1. 模型目录
 
 `model` 字段填**槽位名**，服务端再路由到真实模型；响应体里的 `model` 才是实际在跑的模型。
-真实模型名**不能**直接当 `model` 传（会 `400 无效模型id`）。
+真实模型名**不能**直接当 `model` 传（会 400 无效模型 id）。
 
 | 槽位（`model`） | 显示名 / 实际模型 | 上下文 | 能力 |
 |---|---|---|---|
@@ -33,7 +33,7 @@
   **按账号**改路由，被改过的号会落到某个旧快照；这条是固定映射，账号被改路由时可用它拿回同一个模型。
   后缀 `-antidowngrade` 只是 UI 标记，与上游比名时要剥掉。
 - 模型 ID 会自动归一：旧数字下标 `"0"`…`"7"`、已下线的旧显示名（`deepseek-v4-pro-202606`、
-  `deepseek-v4-1-flash-261017 (防降级)`）、真实模型名都能收敛回槽位，老路由不会因升级而 400。
+  deepseek-v4-1-flash-261017（防降级））、真实模型名都能收敛回槽位，老路由不会因升级而 400。
 - `kimi-k2.5` 已确认持续 500，**本地直接拦成 404**，不打到上游。
 - 自查某槽位实际服务哪个模型：`node scripts/probe-served-model.mjs`
 
@@ -172,7 +172,7 @@ node tools/uskey-server.mjs     # 没有 Windows 客户端时的外部出票服�
 | `MARVIS_RISK_GATE_WS` | 开 | `0` = WS 通道跳过熔断闸（不推荐） |
 
 - 账号桶 = `sha256(openid||uid)` 前 12 位（不落明文），展示名 = 首 4 + 尾 4 脱敏。
-- 状态持久化在 `<稳定资产目录>/breaker-state.json`（v2 多桶，重启不丢）；删掉即重置。
+- 状态持久化在 `<NATIVE_DIR>/breaker-state.json`（v2 多桶，重启不丢）；删掉即重置。
 - 半开状态一次失败**立即重开**，不等满退避周期。
 - **判读**：只有**一个**账号 429 = 账号级，换号可用；**多个**账号接连 429 = 通道级（IP/UA/uskey/上游节点），换号没用。
 - **设备硬拉黑**：`403 + 4100404` 且延迟 < `MARVIS_HARD_BLOCK_MS`（默认 800ms）判为设备被拉黑，
@@ -229,7 +229,7 @@ PC 客户端会把推理过程、重试、最终回答**拼进同一个文本流
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `MARVIS_TRANSPORT` | 未设（auto 探测 8088） | `gateway` / `off` / `openclaw`（别名见第 3 节） |
+| `MARVIS_TRANSPORT` | 未设（auto 探测 8088） | 传输通道，取值与别名见第 3 节 |
 | `MARVIS_GATEWAY_URL` | `http://127.0.0.1:8088/v1` | 本地 HTTP 网关地址 |
 | `MARVIS_GATEWAY_KEY` | 空 | 网关鉴权 key（可选） |
 | `MARVIS_GATEWAY_TIMEOUT_MS` | `600000` | 网关请求超时 |
@@ -280,9 +280,9 @@ node scripts/probe-vision.mjs      # 收图能力实测
 |---|---|---|
 | `403 4100404`（卡片显示 503） | 账号/设备被风控 | 看第 6 节判读；单账号冷却可换号，多账号接连出现要换 IP / 重签 uskey |
 | `401 4100403` | 登录态过期 | 检查 `MARVIS_REFRESH_LEAD_MS`；微信 token 只有 2h |
-| `403 非法请求 / 4100406` | system 首行身份词命中内容过滤 | 开 `first_line_fallback`，或改「提示词首行替换」 |
-| `400 4130001` / `400 无效模型id` | 把真实模型名当 `model` 传了 | 传**槽位名**（第 1 节） |
-| `429 限流` 但配的是 relay | 父进程继承了 `MARVIS_WS_MODE=off`，环境变量优先级高于文件 | `node scripts/probe-openclaw.mjs` 看 `envMode`；在 magpie 启动脚本里 `[Environment]::SetEnvironmentVariable('MARVIS_WS_MODE', $null, 'Process')` |
+| 403 非法请求 / 4100406 | system 首行身份词命中内容过滤 | 开 `first_line_fallback`，或改「提示词首行替换」 |
+| `400 4130001` / 400 无效模型 id | 把真实模型名当 `model` 传了 | 传**槽位名**（第 1 节） |
+| 429 限流 但配的是 relay | 父进程继承了 `MARVIS_WS_MODE=off`，环境变量优先级高于文件 | `node scripts/probe-openclaw.mjs` 看 `envMode`；在 magpie 启动脚本里 `[Environment]::SetEnvironmentVariable('MARVIS_WS_MODE', $null, 'Process')` |
 | 配了 relay 却走成 auto | `openclaw.json` 带 BOM，`JSON.parse` 拒绝 → 配置被静默跳过 | 读配置前已做 `replace(/^\uFEFF/,"")`；仍建议用无 BOM 的 UTF-8 写配置 |
 | 回复里混英文思考 / 像乱码 | PC 客户端把 reasoning 拼进正文流 | 见第 7 节 |
 | 额度卡片显示 0 | 上游营销额度未扣减 | used=0 时显示「共 10,000,000 tokens（上游未扣减）」 |
@@ -295,7 +295,7 @@ node scripts/probe-vision.mjs      # 收图能力实测
 
 1. `%APPDATA%\Tencent\Marvis\electron_data\IndexedDB\https_marvis-client.yyb.qq.com_0.indexeddb.leveldb`
 2. `%APPDATA%\Tencent\Marvis\electron_data\Local Storage\leveldb`
-3. `<稳定资产目录>\qimei36.txt`（即 `~/.magpie-marvis-native/qimei36.txt`）
+3. `<NATIVE_DIR>\qimei36.txt`（即 `~/.magpie-marvis-native/qimei36.txt`）
 
 ```powershell
 python clear_cache.py     # 仓库根的脚本，一次清掉上面三处

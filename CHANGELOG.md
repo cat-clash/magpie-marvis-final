@@ -267,7 +267,7 @@ HEAD
 - **修复（403 自愈链绕过节奏闸）**：兜底句 / 4 句候选池 / U+2060 护栏三处重试全部走 `pacedRetryUpstream`，纳入账号节奏闸；`MARVIS_RETRY_PACING=0` 可关。
 - **修复（会话刷屏）**：一次宿主逻辑请求（含所有 403 重试与自动 WS 回退）只生成一条 `conv_*`，贯穿 `gatewayChatStream`；`MARVIS_GATEWAY_CONVERSATION_ID` 可把全部插件流量钉在一条会话。
 - **修复（Beacon 版本写死）**：`appVersion()` 自动从客户端日志 `client_platform_version` / 安装目录探测（本机 1.60.3600.59），`MARVIS_APP_VERSION` 仍最高优先；诊断新增 `appVersion` / `appVersionSource`。
-- **首行自愈记忆**：`(账号桶, 原首行 hash) → 成功改写句`，TTL 24h，被拦即失效，命中后省掉整条重试链。
+- **首行自愈记忆**：(账号桶, 原首行 hash) → 成功改写句，TTL 24h，被拦即失效，命中后省掉整条重试链。
 - **指纹可靠性**：`reloadFingerprint()` + `nativeMtimeMs()` 供 CLI/doctor 检测客户端升级；qimei36 先扫已知 `qimei_debug_*.log` 快路径，命中跳过全盘递归；`MARVIS_USKEY_TIMEOUT_MS` 可配（默认 5s）；`externalQimeiByAccount` 按账号缓存，修掉多账号互相覆盖。
 - **诊断健壮性**：`riskEvents` 最近 20 条随 `breaker-state.json` 落盘（重启可恢复）；pacing `axes` Map 超 128 条时回收 1h 前的过期 key。
 
@@ -353,7 +353,7 @@ HEAD
   - 报错文案改为「账号「XXXX」风控冷却中…（**其他账号不受影响**）」，并指向解封命令；
     4100404 的 429 文案补上「只有这一个账号被拦 = 账号级；多个账号接连被拦 = 通道级」的区分。
   - 新增 `scripts/breaker-cli.mjs` 与 `node scripts/cli.mjs breaker [list|reset]`
-    （`list --json`、`reset <bucket|label 子串>`、`reset --all`）。
+    （`list --json`、`reset <bucket|label>`、`reset --all`）。
   - 新增 `tests/account-isolation.test.mjs`（18 例）：A 开闸 B 照常可用、v2 多桶落盘互不覆盖、v1 迁移进全局桶、
     共因闸开/关、pacing 分桶与 global 回退、无参向后兼容、`breakerBuckets` / `resetAllBreakers`、
     CLI 的 `--help` / `list --json` / `reset` / `reset --all`，以及 loader 接线断言（不回归到进程单例）。
@@ -446,7 +446,7 @@ HEAD
   「分享到微信」降为可选次按钮；不再放 `weixin://` 主链接（唤起微信对扫码没帮助）。
   文案与 `mobileInstructions("WX")`（7 步）、`WECHAT_OPEN_HINT` 全部改为「二维码必须在另一块屏幕上」，
   并明确写出 10005 是 appid 类型问题、页面下方「公众号网页授权（实验）」对 Marvis 无效。
-- **新增 `scripts/import-login.mjs`**（`node scripts/cli.mjs import-login <文件.json> --yes`）：
+- **新增 `scripts/import-login.mjs`**（`node scripts/cli.mjs import-login <file.json> --yes`）：
   把电脑端导出的一份 `{"marvis#xxxx": {...}}` 登录态合并进本机 `plugin-auth.json` ——
   手机扫码这条路走不通时，直接把电脑已登录的账号搬过去。带备份、原子写、`--dry-run`、
   `--overwrite`、`--json`，只合并 `marvis#` / `marvis-proxy` 前缀（不碰别的插件的凭据），
@@ -498,7 +498,7 @@ HEAD
   一次性 token 防 CSRF）上**每个账号**都有「取消登录」「移除」按钮 —— magpie 壳对首选账号不渲染
   移除按钮是壳侧 UI 限制，管理页不受它约束。只认整键（模糊选择器一律拒绝，防误删）；
   页面渲染时的账号快照作为并发基线，壳中途写回文件 → 409 可读错误、原文件不动；
-  写盘前 `.bak-<时间戳>` 备份 + 原子替换。操作后需完全退出并重启 magpie（壳有内存态）。
+  写盘前 `.bak-<timestamp>` 备份 + 原子替换。操作后需完全退出并重启 magpie（壳有内存态）。
 - **微信登录不再直接打开二维码页**：`mobileOauthLogin` 给壳的 `url` 从 qrconnect 改成本机引导页
   （`paste.url`）。上一版壳「打开浏览器」直接开出扫码图片，用户根本走不到「唤起微信 + 复制授权链接」
   那套按钮；现在打开就是引导页，qrconnect 只留在页内的备用链接里。QQ 分支不变。
@@ -537,12 +537,12 @@ HEAD
 - **新增账号管理：每个账号都能取消登录 / 直接移除**。`node scripts/cli.mjs accounts list|logout|remove`（也可
   `node scripts/accounts.mjs …`），不必再受「第一个账号删不掉」的限制：
   - `list` 列出本插件条目的 key / 卡片名 / QQ·微信 / 状态 / 可用选择器；
-  - `logout <key|uid|卡片名>` 把 `access`/`refresh` 清空、`expires` 拨到过去、打 `metadata.revokedAt`，
+  - `logout <key|uid|card>` 把 `access`/`refresh` 清空、`expires` 拨到过去、打 `metadata.revokedAt`，
     保留 `accountId`/`uid`/`guid`（重新登录还能复用同一张卡片和虚拟设备），并让 loader 回
     `401 + X-Magpie-Sign-In: expired`，壳上直接显示「需要重新登录」；
-  - `remove <key|uid|卡片名>` 整条删除（插件没有上游登出接口，删本地凭据即可）；
+  - `remove <key|uid|card>` 整条删除（插件没有上游登出接口，删本地凭据即可）；
   - 支持 `--dry-run` 预览、`--yes` 非交互确认、`--all` 批量取消（移除不支持 `--all`）；
-    写盘前留 `.bak-<时间戳>` 备份、原子替换，并做乐观并发校验 —— magpie 正在运行时改文件会被拒绝。
+    写盘前留 `.bak-<timestamp>` 备份、原子替换，并做乐观并发校验 —— magpie 正在运行时改文件会被拒绝。
 - 修掉一个会拖住进程的监听句柄：本地登录页的 HTTP server 与超时定时器都不再参与保活
   （`server.unref()` / `timer.unref()`），新增 `cancel()` 供放弃授权时立刻释放端口；
   测试套件从「拖到 10 分钟超时才退」回到 4 秒。
@@ -623,7 +623,7 @@ HEAD
 
 **风控强化**
 
-- **熔断器升级**：退避策略改为**指数退避**（`base×2^n`，上限 8h，±10% jitter）；半开状态一次失败**立即重开**（不再等满整个退避周期）；状态持久化到 `<稳定资产目录>/breaker-state.json`，重启不丢；新增 `riskEvents()` 事件环形缓冲，供诊断读取近期风控事件。
+- **熔断器升级**：退避策略改为**指数退避**（`base×2^n`，上限 8h，±10% jitter）；半开状态一次失败**立即重开**（不再等满整个退避周期）；状态持久化到 `<NATIVE_DIR>/breaker-state.json`，重启不丢；新增 `riskEvents()` 事件环形缓冲，供诊断读取近期风控事件。
 - **新增请求节奏闸 pacing**：出站补全请求最小间隔 `MARVIS_MIN_REQUEST_INTERVAL_MS`（默认 `800`）+ 随机抖动 `MARVIS_REQUEST_JITTER_MS`（默认 `400`），压平请求节奏，降低被节奏风控盯上的概率。
 
 **流式透传**
@@ -726,14 +726,14 @@ HEAD
 ## 0.4.4 — 2026-11-24
 
 - **撤出本机测试工具**：`tools/marvis-refresh.ps1` / `tools/capture_marvis.py` 是开发期的本机测试台产物（绑定特定模拟器环境），不随插件分发。`refreshCmd` 机制保留 —— 凭据失效自动重抓的能力由用户自备的刷新脚本提供（放在插件目录外，避免 `magpie plugin update` 清掉）。**不装刷新脚本也能用**：凭据失效时插件报出明确的失效诊断，用户重抓一次 handshake.log 放回 native/ 即可恢复
-- 凭据刷新命令示例（本机自备）：openclaw.json `"refreshCmd": "powershell -ExecutionPolicy Bypass -File <你的刷新脚本> <native目录>"`
+- 凭据刷新命令示例（本机自备）：openclaw.json `"refreshCmd": "powershell -ExecutionPolicy Bypass -File <your-script.ps1> <NATIVE_DIR>"`
 
 ## 0.4.3 — 2026-11-24
 
 **relay 凭据短命问题终结：自动刷新流水线内置，端到端 PONG 实测 2 秒**
 
 - **修（配置劫持）**：`fileConfig()` 现在让**插件自带的 native/openclaw.json 优先**于 `MARVIS_NATIVE_DIR` 里的同名文件 —— 用户环境变量残留的旧插件 `MARVIS_NATIVE_DIR`（内含 `mode=bridge`）会把传输层整体劫持到 3502 死桥，表现为所有请求 12s 无响应。**这是宿主内"全部失败"的真凶**
-- **新增（凭据自动刷新）**：relay 凭据实测短命（≈15-20 分钟，手机会话死后服务器很快回收）。连接失败（握手无应答/被拒绝/WS 错误）且配置了 `refreshCmd` 时，自动执行重抓流水线（启动 App → attach 抓包 → 断网重连 → 写 native/handshake.log → 杀 App）后重试一次。配置：openclaw.json `"refreshCmd": "powershell -ExecutionPolicy Bypass -File tools\\marvis-refresh.ps1 <native目录>"`
+- **新增（凭据自动刷新）**：relay 凭据实测短命（≈15-20 分钟，手机会话死后服务器很快回收）。连接失败（握手无应答/被拒绝/WS 错误）且配置了 `refreshCmd` 时，自动执行重抓流水线（启动 App → attach 抓包 → 断网重连 → 写 native/handshake.log → 杀 App）后重试一次。配置：openclaw.json `"refreshCmd": "powershell -ExecutionPolicy Bypass -File tools\\marvis-refresh.ps1 <NATIVE_DIR>"`
 - **新增 tools/marvis-refresh.ps1 + tools/capture_marvis.py**：自动刷新脚本（含 frida-python 探测、大小写重复代理变量清洗、.NET Process 后台抓包），Magpie 宿主实测可用
 - 实测：`mode=remote` + 自动刷新 → `CONNECT OK → chat.send → PONG`，全新凭据下 2 秒返回
 
@@ -865,7 +865,7 @@ HEAD
 
 - 采纳 @pawamamama 的 #59：magpie 的 `label ≤ 60` 是**按字符数**校验，中文能过；
   但一个汉字约两列宽，40 字≈80 列 —— 窄窗口就折行，而选项行只预留一行高度，第二行直接压到「模型」区块上
-- 两条 `labels.zh` 收到一行放得下的长度，并在 always 上留了个短指向：`每个请求都改写首行（文本在「选项」里）`
+- 两条 `labels.zh` 收到一行放得下的长度，并在 always 上留了个短指向：每个请求都改写首行（文本在「选项」里）
 - 用例加一条「中文 label ≤ 24 字」的显示宽度上限（原来只查 magpie 的 60 字符上限）
 
 ## 0.2.51 — 2026-11-17
@@ -907,7 +907,7 @@ HEAD
 
 - 两条开关的 `description` 缩短到**一行画得完**（zh ≤48 字符、en ≤120）：magpie 按一行算行高，
   第二行不会撑高，会直接压在下面的「模型」区块上（实测截图）。用例加了这条上限防回归。
-- 首行文本面板改成**一行 + 按钮**：`首行文本  当前值  [设置…]`，点「设置…」弹出原生 `<dialog>`，
+- 首行文本面板改成**一行 + 按钮**：首行文本 → 当前值 → [设置…]，点「设置…」弹出原生 `<dialog>`，
   里面是输入框和「取消 / 保存」两个按钮；保存时才写一次 `firstLine.text`（`options.set` 是整份替换、
   一秒最多一次，仍然整份展开写回）。面板本身只有一行高，不再把编辑器撑高。
 - 面板用例同步：写回挂在「保存」按钮的 submit 上，禁止边打字边写（原来是 1.2s 防抖）。
@@ -1024,7 +1024,7 @@ HEAD
 - 2026-11-17 复测 0.2.32 起的连字符改写产物：`You are Claude-Code, …` /
   `You are a coding agent running in the Codex-CLI, …` **仍然 403** —— 规则在跑，
   改完上游照样拦，用户看到的现象和没装插件一样（issue #36 / #41 的表里都记着）
-- 上游认的是**第一句的形状**：`You are <产品名>` 当主语就拦，插字符不管用；**拆主语**才放行。
+- 上游认的是**第一句的形状**：`You are <product>` 当主语就拦，插字符不管用；**拆主语**才放行。
   实测（同一分钟、只换 system 首行）：`You are a coding agent, running in the Codex CLI, …` → 200、
   `You are an agent, Claude Code, …` → 200、`You are an agent, Claude-Code, …` → 200、
   `You are an agent, Claude.` → 200
@@ -1097,7 +1097,7 @@ HEAD
 **修复（中文 / 本地化身份句既不自动改写、也不给诊断）**
 
 - 触发：system 首行是中文身份句（如 `你是一个由 DeepSeek Harness 驱动的 AI 智能体。`）时，上游同样回
-  403 `4100406 非法请求`；但 0.2.29 起的三条改写规则都是英文整句模板，中文一句都不匹配 ——
+  403 4100406 非法请求；但 0.2.29 起的三条改写规则都是英文整句模板，中文一句都不匹配 ——
   于是既不自动改写（用户照旧撞墙），也不进 `content_filtered` 诊断（宿主照旧显示「API 密钥无效」）
 - 判据统一成「system 首行 + 词对 + 单个空格」：改写与诊断共用同一个集合，中文规则一并补上；
   顺带补上 Codex 身份句的诊断分支（此前只有 DSH 与 Claude 两条），改写限定在 system 角色的第一行
@@ -1197,11 +1197,11 @@ HEAD
 
 **修复（0.2.23 的「防降级」条目会让部分客户端卡死）**
 
-- 该条目的显示名从 `deepseek-v4-1-flash-261017 (防降级)` 改为
+- 该条目的显示名从 deepseek-v4-1-flash-261017（防降级） 改为
   `deepseek-v4-1-flash-261017-antidowngrade` —— **纯 ASCII，不带空格与全角括号**
 - 原因：显示名带非 ASCII 字符时，VS Code Copilot 里选中它会一直停在回复阶段（同一条在 DSH 下正常），
   模型名会被客户端拿去做 header / URL 处理，非 ASCII 在那一层会出问题（issue #15）
-- 旧显示名保留归一映射：已经写好它的路由组升级后照常工作，不会 `400 无效模型id`
+- 旧显示名保留归一映射：已经写好它的路由组升级后照常工作，不会 400 无效模型 id
 - 新增回归测试：**所有模型的显示名必须是纯 ASCII** —— 防止再有人给它加中文后缀
 - 验收：测试 128 项中 124 通过、4 项因未注入 live 凭据跳过；合规检查 42 项全过
 
@@ -1224,12 +1224,12 @@ HEAD
 **修复（`deepseek-v4-pro-external` 的显示名与实际模型不符）+ 加一条防降级槽位**
 
 - 该槽位实测回的是 `deepseek-v4-1-flash-261017`（不是名字暗示的 pro），显示名改为
-  `deepseek-v4-1-flash-261017 (防降级)` —— 与 `main-auto` 那条同时出现在模型列表里，名字上能区分
+  deepseek-v4-1-flash-261017（防降级） —— 与 `main-auto` 那条同时出现在模型列表里，名字上能区分
 - 为什么两条并存：`main-auto` 属 auto 家族（`main-auto` / `file-auto` / `computer-auto` / `browser-auto`
   是同一族，服务端会**按账号**改路由，被改到的号会落到旧快照），而 `deepseek-v4-pro-external`
   是独立固定映射、不受影响 —— 账号被改路由时它可用来拿到同一个模型
 - 旧显示名 `deepseek-v4-pro-202606` 保留归一映射：已经写好它的路由组升级后照常工作，
-  不会把旧名字原样发给上游变成 `400 无效模型id`
+  不会把旧名字原样发给上游变成 400 无效模型 id
 - 验收：新增 2 项回归测试（抽掉别名映射会红）；全量 116 项中 112 通过、4 项因未注入 live 凭据跳过；
   合规检查 42 项全过
 
@@ -1250,7 +1250,7 @@ HEAD
 
 - 配置合并不再保留无法归一到当前目录的失效或手工模型 ID，避免继续调用已下线槽位
 - `loader` 对不支持的模型直接返回 404 `model_unavailable`，不再发上游并触发多轮 500 重试；
-  上游 `4130001 / 无效模型id` 也归为模型级 404
+  上游 4130001 / 无效模型 id 也归为模型级 404
 - Magpie 的模型键、`id`、`name` 继续显示真实模型名；`main-auto` 只作为内部上游槽位，不作为用户可见模型名
 - README、npm 描述与 Discover 注册摘要同步为真实 8 个模型，删除 Kimi K2.5 与“18 个槽位”等失效宣传
 - 验收：新增回归测试均先红后绿；全量 83 项中 79 通过、4 项因未注入 live 凭据跳过；
@@ -1278,9 +1278,9 @@ HEAD
 **文档（计费口径改写成计费公式）**
 
 - README「计费 / 额度」从「字段含义 + 占比公式」改成**计费公式**：
-  `计费 token = 缓存读取 × 0 +（输入 + 输出）× 0.5`，一个号每天 **1000 万计费 token**
+  计费 token = 缓存读取 × 0 +（输入 + 输出）× 0.5，一个号每天 **1000 万计费 token**
 - 并说明 1000 万是**计费** token，实际可用量远高于它 —— 缓存命中全免、输入输出打五折，
-  按例子 `实际 : 计费 = 5 : 1`，1000 万计费 ≈ **5000 万实际 token**（全无缓存也有 2 : 1）
+  按例子 实际 : 计费 = 5 : 1，1000 万计费 ≈ **5000 万实际 token**（全无缓存也有 2 : 1）
 - 顶部「它能给你什么」的额度行同步成「1000 万计费 token（缓存免费 + 输入输出五折，实际能跑 2000 万～5000 万+）」
 - 字段表里 `total_tokens` / `used_tokens` 标注「**计费** token」，避免与实际 token 混读
 
@@ -1359,7 +1359,7 @@ HEAD
   `apiId` 保留上游槽位名（`main-auto`）—— 路由/卡片不再显示 `0` 或 `main-auto`
 - `loader` 同时认三种写法：真实模型名、旧槽位名、旧数字下标，统一映射到上游槽位；
   已实测 `model:"0"` 与 `model:"deepseek-v4-1-flash-261017"` 都返回 200
-- 旧路由由升级脚本迁移 `marvis/0 → marvis/main-auto → marvis/<真实模型名>`；
+- 旧路由由升级脚本迁移 `marvis/0 → marvis/main-auto → marvis/<real-model>`；
   不迁移时 loader 仍兼容旧引用
 
 ## 0.2.11 — 2026-11-06
@@ -1371,7 +1371,7 @@ HEAD
   路由里只显示 `0`，请求发 `model:"0"` 上游 400
 - 旧数组形态在 `config` 合并时按 TABLE 顺序自动认回槽位名，用户改过的名字/上下文/能力保留
 - `loader` 的数字 ID 兼容映射保留：即使路由组里还写着 `marvis/0`，也能正常调用
-- 账号名继续带 `QQ·` / `微信·` 前缀（旧账号点刷新或重登后生效）
+- 账号名继续带 `QQ·` / 微信· 前缀（旧账号点刷新或重登后生效）
 
 **升级提示**
 
@@ -1382,11 +1382,11 @@ HEAD
 
 **修复**
 
-- **旧路由 `model:"0"` 报 `400 无效模型 id`**：0.2.x 的 `config.models` 是数组，
+- **旧路由 `model:"0"` 报 400 无效模型 id**：0.2.x 的 `config.models` 是数组，
   magpie 把它持久化成下标 `"0"…"7"`，路由组引用 `marvis/0`，请求体就发 `"0"`。
   `loader` 现在把纯数字 ID 按 TABLE 顺序归一成槽位名（`0 → main-auto`），
   **旧路由不改配置即可继续用**
-- **账号名前缀**：卡片名变成 `QQ·昵称` / `微信·昵称`，同名的 QQ/微信账号可以直接区分；
+- **账号名前缀**：卡片名变成 QQ·昵称 / 微信·昵称，同名的 QQ/微信账号可以直接区分；
   旧账号点一次刷新（或重登）后生效
 - 昵称/头像在登录、本机导入、刷新时统一通过签名 POST 获取，拿不到就留空
 
@@ -1434,7 +1434,7 @@ HEAD
 
 **实机验证**
 
-- QQ 扫码 → 隔离浏览器拦截 → Node 带 guid 换取成功：`uid=<已脱敏>`，拿到 access + refresh
+- QQ 扫码 → 隔离浏览器拦截 → Node 带 guid 换取成功：`uid=<masked>`，拿到 access + refresh
 - 用新凭据调用 `main-auto`：HTTP 200，`model=deepseek-v4-1-flash-261017`，内容 `"OK"`
 
 ## 0.2.7 — 2026-11-06
