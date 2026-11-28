@@ -437,7 +437,7 @@ HEAD
 - **微信登录方向纠正（真机两次打回后的结论）**：Marvis 的 appid 是**网站应用**，只有
   `snsapi_login`（`qrconnect` 扫码）；它**不是公众号**，所以 `connect/oauth2/authorize`
   （0.7.8 的 snsapi_userinfo、0.7.9 的 snsapi_base）在微信内一律报
-  **「此公众号并没有这些scope的权限，错误码:10005」**。改 scope 解决不了，是 appid 类型问题。
+  **「此公众号并没有这些 scope 的权限，错误码:10005」**。改 scope 解决不了，是 appid 类型问题。
   微信又已禁止长按/相册识别二维码（「该二维码仅支持在扫一扫时通过摄像头来识别」），
   一台手机扫自己屏幕走不通。于是手机端主路径改为：
   **复制授权链接 → 到电脑（或第二台设备）浏览器打开出二维码 → 这台手机微信「扫一扫」→
@@ -456,7 +456,7 @@ HEAD
 
 - **修 0.7.8 的真机报错：微信网页授权 scope 改 `snsapi_base`**。0.7.8 把手机微信登录从
   `qrconnect`（扫码页）改成了公众号网页授权，方向对，但 scope 用了 `snsapi_userinfo`，
-  真机在微信里点开链接直接弹：**「微信登录失败：此公众号并没有这些scope的权限，错误码:10005」**。
+  真机在微信里点开链接直接弹：**「微信登录失败：此公众号并没有这些 scope 的权限，错误码:10005」**。
   10005 表示公众号未认证、没有 userinfo 权限；而 `snsapi_base` 是所有公众号默认具备的（无需认证），
   且我们只需要 code 去 Marvis 服务端换登录态（不需要昵称头像），base 完全够用 →
   `wxWebAuthUrl()` 的 scope 改为 `snsapi_base`。base 是静默授权：在微信里打开后**直接跳回**
@@ -741,7 +741,7 @@ HEAD
 
 **remote 通道真正稳定版（变体实验定位双根因，探针 PONG 复现）**
 
-- **修（connect.auth 带accessToken → -3）**：remote 模式下 connect.auth **不再发送**插件自己的 mv_ accessToken —— relaySessionId/relayToken 这一对就是登录态。0.4.1 仍带 token，magpie 定期轮换（refresh 成对轮换、与手机登录互踢）后必然失配，服务器回 `登录态鉴权失败: AK/SK fetched successfully but data is incomplete`；relay 模式（无握手凭据）保留 accessToken
+- **修（connect.auth 带 accessToken → -3）**：remote 模式下 connect.auth **不再发送**插件自己的 mv_ accessToken —— relaySessionId/relayToken 这一对就是登录态。0.4.1 仍带 token，magpie 定期轮换（refresh 成对轮换、与手机登录互踢）后必然失配，服务器回 `登录态鉴权失败: AK/SK fetched successfully but data is incomplete`；relay 模式（无握手凭据）保留 accessToken
 - **修（宿主代理拦截 WS）**：magpie 宿主带 HTTPS_PROXY 时 Bun 的 WebSocket 会被代理转发，对 openclaw 端点 `proxy_connect: message forward failed`。现在构造 WS 前临时剥离代理变量、onopen/失败路径恢复（`MARVIS_WS_BYPASS_PROXY=0` 可关）
 - 实测：探针 `CONNECT OK → chat.send → PONG`（auth = openid + relaySessionId + relayToken，无 accessToken）
 
@@ -1087,7 +1087,7 @@ HEAD
 - 报错分流从「命中已知身份句才算内容过滤」改成「**403 + 非法请求就给统一提示**」
 - 理由：上游指纹在持续扩大（英文 → 中文 → 还没见过的写法），按指纹判定永远漏
   —— 0.2.34 刚给中文补了一条规则，下一版还会有别的。而 403 + 这个组合目前只出现在
-  内容过滤上（模型无权限是 400「无效模型id」）
+  内容过滤上（模型无权限是 400「无效模型 id」）
 - **改写仍按指纹精确执行**（避免改无关内容），只有**诊断**放宽：宁可多给一句「进群」，
   也不把人甩回宿主那句「API 密钥无效」
 - 验收：测试 160 项中 156 通过、4 项因未注入 live 凭据跳过；合规检查 42 项全过
